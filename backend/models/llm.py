@@ -1,4 +1,3 @@
-# osint-engine/backend/models/llm.py
 from langchain_core.language_models import BaseChatModel
 from config import get_settings
 
@@ -10,9 +9,23 @@ class LLMRouter:
         self.settings = get_settings()
 
     def get_llm(self, agent_role: str) -> BaseChatModel:
+        # 优先使用 MIMO（统一模型）
+        if self.settings.mimo_api_key:
+            return self._get_mimo(max_tokens=4096 if agent_role == "synthesizer" else 2048)
+        # 回退到 DeepSeek / Claude
         if agent_role == "synthesizer":
             return self._get_claude()
         return self._get_deepseek()
+
+    def _get_mimo(self, max_tokens: int = 2048) -> BaseChatModel:
+        from langchain_openai import ChatOpenAI
+        return ChatOpenAI(
+            model=self.settings.mimo_model,
+            api_key=self.settings.mimo_api_key,
+            base_url=self.settings.mimo_base_url,
+            max_tokens=max_tokens,
+            temperature=0.3,
+        )
 
     def _get_deepseek(self) -> BaseChatModel:
         from langchain_deepseek import ChatDeepSeek
@@ -31,13 +44,6 @@ class LLMRouter:
             max_tokens=4096,
             temperature=0.3,
         )
-
-    def get_llm_with_fallback(self, agent_role: str) -> BaseChatModel:
-        """获取 LLM，主模型失败时自动 fallback"""
-        try:
-            return self.get_llm(agent_role)
-        except Exception:
-            return self._get_claude() if agent_role != "synthesizer" else self._get_deepseek()
 
 
 # 全局单例
