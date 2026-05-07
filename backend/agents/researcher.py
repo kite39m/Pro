@@ -20,7 +20,8 @@ async def researcher_node(state: ResearchState) -> dict:
 
     async def search_subtask(task: dict) -> list[Finding]:
         findings = []
-        keywords = task.get("search_keywords_zh", []) + task.get("search_keywords_en", [])
+        # 每个子任务只取前2个关键词（中英各1），减少搜索次数
+        keywords = (task.get("search_keywords_zh", []) + task.get("search_keywords_en", []))[:2]
 
         for keyword in keywords:
             try:
@@ -40,7 +41,6 @@ async def researcher_node(state: ResearchState) -> dict:
                     })
             except Exception:
                 continue
-            await asyncio.sleep(1)
         return findings
 
     async def search_revision(query: str) -> list[Finding]:

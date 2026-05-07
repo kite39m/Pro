@@ -73,8 +73,8 @@ class SearchWebTool(BaseTool):
         soup = BeautifulSoup(html, "lxml")
         results = []
 
-        # DuckDuckGo HTML 结果在 class="result" 的 div 中
-        for item in soup.select(".result"):
+        # DuckDuckGo HTML 结果在 class="result" 的 div 中，排除广告
+        for item in soup.select(".result:not(.result--ad)"):
             title_tag = item.select_one(".result__a")
             snippet_tag = item.select_one(".result__snippet")
             if not title_tag:
@@ -90,6 +90,10 @@ class SearchWebTool(BaseTool):
                 parsed = urlparse(href)
                 actual = parse_qs(parsed.query).get("uddg", [""])[0]
                 href = unquote(actual) if actual else href
+
+            # 跳过无效链接
+            if not href or "duckduckgo.com" in href:
+                continue
 
             results.append({
                 "title": title,
