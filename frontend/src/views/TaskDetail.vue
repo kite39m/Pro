@@ -44,12 +44,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { getTask, getReport, createEventSource } from '../api/client'
 import AgentProgress from '../components/AgentProgress.vue'
 import ReportViewer from '../components/ReportViewer.vue'
 
 const route = useRoute()
+const router = useRouter()
 const taskId = route.params.id as string
 
 const taskQuery = ref('')
@@ -59,12 +61,27 @@ const events = ref<Array<{ agent: string; status: string; timestamp: string }>>(
 let es: EventSource | null = null
 
 onMounted(async () => {
-  const task = await getTask(taskId)
-  taskQuery.value = task.query
-  taskStatus.value = task.status
+  try {
+    const task = await getTask(taskId)
+    taskQuery.value = task.query
+    taskStatus.value = task.status
 
-  if (task.status === 'completed') {
-    reportContent.value = await getReport(taskId)
+    if (task.status === 'completed') {
+      reportContent.value = await getReport(taskId)
+      return
+    }
+
+    if (task.status === 'failed') {
+      ElMessage.error('任务已失败')
+      return
+    }
+  } catch (err: any) {
+    if (err?.response?.status === 404) {
+      ElMessage.error('任务不存在')
+      router.push('/')
+      return
+    }
+    ElMessage.error('加载任务失败')
     return
   }
 
@@ -86,6 +103,9 @@ onMounted(async () => {
     events.value.push(JSON.parse(e.data))
     taskStatus.value = 'failed'
   })
+  es.onerror = () => {
+    // SSE 连接断开时静默处理，任务可能已完成或失败
+  }
 })
 
 onUnmounted(() => {

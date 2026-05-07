@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 import aiosqlite
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
 from agents.graph import get_graph
@@ -54,7 +54,7 @@ async def get_task(task_id: str):
         async with db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)) as cursor:
             row = await cursor.fetchone()
             if row is None:
-                return {"error": "Task not found"}, 404
+                raise HTTPException(status_code=404, detail="Task not found")
             return dict(row)
 
 
